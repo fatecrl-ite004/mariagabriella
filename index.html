@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Michi - Língua e Cultura Japonesa</title>
+    <style>
+        /* Estilos Globais */
+        :root {
+            --primary-color: #E63946;
+            --primary-light: #FAD4D6;
+            --bg-color: #F8F9FA;
+            --text-dark: #2B2D42;
+            --text-light: #8D99AE;
+            --locked-bg: #E0E1DD;
+            --border-color: #E2E8F0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Navegação */
+        header { background-color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: var(--primary-color); cursor: pointer; transition: opacity 0.2s; }
+        .logo:hover { opacity: 0.8; }
+        nav { display: flex; gap: 1.5rem; }
+        nav button { background: none; border: none; font-size: 1rem; color: var(--text-dark); cursor: pointer; padding: 0.5rem; border-bottom: 2px solid transparent; transition: all 0.3s; }
+        nav button:hover, nav button.active { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); }
+
+        /* Área de Conteúdo principal */
+        main { flex: 1; padding: 2rem; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .section-header { margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
+        .section-header h2 { margin: 0 0 0.5rem 0; color: var(--text-dark); }
+        .section-header p { margin: 0; color: var(--text-light); font-size: 1rem; line-height: 1.5; }
+
+        /* Layout da Trilha */
+        .trail-wrapper { display: flex; position: relative; margin-bottom: 1rem; }
+        .trail-indicator { width: 60px; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+        .trail-node { width: 24px; height: 24px; border-radius: 50%; background-color: var(--primary-color); z-index: 2; margin-top: 30px; border: 4px solid var(--primary-light); transition: 0.3s; }
+        .trail-line { width: 4px; background-color: var(--primary-color); flex-grow: 1; margin-top: -10px; margin-bottom: -40px; z-index: 1; transition: 0.3s; }
+        .trail-node.locked { background-color: var(--locked-bg); border-color: var(--border-color); }
+        .trail-line.locked { background-color: var(--locked-bg); }
+        .trail-wrapper:last-child .trail-line { display: none; }
+
+        /* Cards da Trilha */
+        .module-card { background: white; border-radius: 8px; padding: 1.5rem; flex-grow: 1; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
+        .module-card.locked { background-color: var(--locked-bg); color: var(--text-light); opacity: 0.7; }
+        .module-card.completed { border-left: 5px solid green; }
+        .module-type { font-size: 0.8rem; text-transform: uppercase; font-weight: bold; color: var(--primary-color); margin-bottom: 0.3rem; display: inline-block; background: var(--primary-light); padding: 0.2rem 0.6rem; border-radius: 12px; }
+        .module-card.locked .module-type { background: var(--border-color); color: var(--text-light); }
+        .module-info h3 { margin: 0 0 0.5rem 0; font-size: 1.2rem; }
+        .module-info p { margin: 0; font-size: 0.95rem; }
+
+        .btn { background-color: var(--primary-color); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
+        .btn:hover:not(:disabled) { opacity: 0.9; transform: scale(1.02); }
+        .btn:disabled { background-color: var(--text-light); cursor: not-allowed; }
+        .btn.btn-continue { background-color: #F4A261; color: white; }
+
+        /* Área do Exercício */
+        .quiz-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: relative; }
+        .progress-bar { width: 100%; height: 8px; background-color: var(--locked-bg); border-radius: 4px; margin-bottom: 1.5rem; overflow: hidden; }
+        .progress-fill { height: 100%; background-color: var(--primary-color); width: 0%; transition: width 0.3s ease; }
+        
+        #feedback { margin-top: 1rem; font-weight: bold; min-height: 24px; text-align: center;}
+        .success { color: green; }
+        .error { color: var(--primary-color); }
+
+        /* Cards de Opções (Múltipla Escolha) flexíveis */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Adaptável: 2 ou 4 colunas */
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .option-card {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.2rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-dark);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            text-transform: capitalize;
+        }
+
+        .option-card:hover {
+            border-color: var(--primary-color);
+            background-color: var(--primary-light);
+        }
+
+        .option-card.correct {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+            pointer-events: none;
+        }
+
+        .option-card.incorrect {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+            animation: shake 0.4s;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        @media (max-width: 600px) {
+            .options-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Glossário (Termos) */
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .grid-item { background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
+        .grid-item h3 { margin-top: 0; color: var(--primary-color); font-size: 1.2rem; margin-bottom: 0.5rem;}
+        .grid-item .romaji { font-size: 0.9rem; color: var(--text-light); font-weight: bold; display: block; margin-bottom: 0.5rem;}
+        
+        /* Alfabetos Kana */
+        .kana-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+        .kana-group { background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .kana-group h4 { margin-top: 0; color: var(--text-dark); text-align: center; border-bottom: 2px solid var(--primary-light); padding-bottom: 0.5rem; font-size: 1.1rem;}
+        .kana-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px dashed #eee; font-size: 1.3rem; }
+        .kana-row:last-child { border-bottom: none; }
+        .kana-row span.romaji { color: var(--text-light); font-size: 1rem; font-weight: bold; }
+
+        /* Perfil e Configurações */
+        .profile-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; background: white; padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); }
+        .avatar { width: 80px; height: 80px; background-color: var(--primary-color); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; font-weight: bold; }
+        .settings-section { background: white; border-radius: 8px; padding: 2rem; border: 1px solid var(--border-color); margin-top: 2rem; }
+        .settings-section h3 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; color: var(--text-dark); }
+        .form-group { margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .form-group label { font-weight: bold; color: var(--text-dark); font-size: 0.9rem; }
+        .file-upload-wrapper { display: flex; align-items: center; gap: 1rem; }
+        input[type="text"].form-control, input[type="email"].form-control, input[type="password"].form-control { padding: 0.6rem; font-size: 1rem; border: 1px solid var(--border-color); border-radius: 4px; font-family: inherit; width: 100%; box-sizing: border-box;}
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo" onclick="navigateHome()">Michi (道)</div>
+        <nav>
+            <button id="nav-trilha" class="nav-btn active" onclick="navigate('trilha', this)">Trilha de Aprendizado</button>
+            <button id="nav-glossario" class="nav-btn" onclick="navigate('glossario', this)">Glossário Cultural</button>
+            <button id="nav-perfil" class="nav-btn" onclick="navigate('perfil', this)">Perfil</button>
+        </nav>
+    </header>
+
+    <main>
+        <section id="trilha" class="view active">
+            <div class="section-header">
+                <h2>Sua Jornada</h2>
+                <p>Complete as pílulas culturais para desbloquear as lições de idioma associadas.</p>
+            </div>
+
+            <div class="trail-wrapper">
+                <div class="trail-indicator">
+                    <div class="trail-node" id="node-1"></div>
+                    <div class="trail-line" id="line-1"></div>
+                </div>
+                <div class="module-card" id="card-1">
+                    <div class="module-info">
+                        <span class="module-type">📖 Cultura</span>
+                        <h3>1. A Etiqueta das Saudações</h3>
+                        <p>Aprenda a ler o ambiente: a importância da inclinação (Ojigi) e a hierarquia nas saudações.</p>
+                    </div>
+                    <button class="btn" id="btn-1" onclick="iniciarExercicio(1)">Iniciar</button>
+                </div>
+            </div>
+
+            <div class="trail-wrapper">
+                <div class="trail-indicator">
+                    <div class="trail-node locked" id="node-2"></div>
+                    <div class="trail-line locked" id="line-2"></div>
+                </div>
+                <div class="module-card locked" id="card-2">
+                    <div class="module-info">
+                        <span class="module-type">✍️ Prática</span>
+                        <h3>2. Vocabulário de Saudações</h3>
+                        <p>Aplique as saudações japonesas adequando-se ao nível de formalidade exigido.</p>
+                    </div>
+                    <button class="btn" id="btn-2" onclick="iniciarExercicio(2)" disabled>Bloqueado</button>
+                </div>
+            </div>
+
+            <div class="trail-wrapper">
+                <div class="trail-indicator">
+                    <div class="trail-node locked" id="node-3"></div>
+                    <div class="trail-line locked" id="line-3"></div>
+                </div>
+                <div class="module-card locked" id="card-3">
+                    <div class="module-info">
+                        <span class="module-type">📖 Cultura</span>
+                        <h3>3. Uchi e Soto (Dentro e Fora)</h3>
+                        <p>O conceito mais importante da sociedade japonesa: tratar o seu grupo versus estranhos.</p>
+                    </div>
+                    <button class="btn" id="btn-3" onclick="iniciarExercicio(3)" disabled>Bloqueado</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="exercicio" class="view">
+            <button class="btn" onclick="navigateHome()" style="background: var(--text-light); margin-bottom: 1rem;">← Sair da Lição (Salvar Progresso)</button>
+            <div class="quiz-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="quiz-progress"></div>
+                </div>
+                <h2 id="quiz-titulo">Módulo X - Pergunta Y</h2>
+                <p><strong id="quiz-cenario">Cenário:</strong></p>
+                <p id="quiz-pergunta">Pergunta</p>
+                
+                <div class="options-grid" id="opcoes-container">
+                    </div>
+
+                <p id="feedback"></p>
+            </div>
+        </section>
+
+        <section id="glossario" class="view">
+            <div class="section-header">
+                <h2>Glossário Cultural (Conceitos)</h2>
+                <p>Aqui você encontra todos os termos que definem o comportamento e as regras sociais no Japão, exigidos nos módulos culturais.</p>
+            </div>
+            <div class="grid-container">
+                <div class="grid-item"><h3>道</h3><span class="romaji">michi</span><p>Significa "caminho" ou "jornada".</p></div>
+                <div class="grid-item"><h3>お辞儀</h3><span class="romaji">ojigi</span><p>O ato de curvar-se. Demonstra respeito, gratidão ou pedido de desculpas.</p></div>
+                <div class="grid-item"><h3>敬語</h3><span class="romaji">keigo</span><p>Linguagem honorífica japonesa, usada para demonstrar respeito por superiores.</p></div>
+                <div class="grid-item"><h3>内</h3><span class="romaji">uchi</span><p>Significa "Dentro". Refere-se ao seu grupo íntimo (sua família, sua empresa, seu time).</p></div>
+                <div class="grid-item"><h3>外</h3><span class="romaji">soto</span><p>Significa "Fora". Refere-se a estranhos, clientes ou pessoas de outras empresas/grupos.</p></div>
+                <div class="grid-item"><h3>先輩</h3><span class="romaji">senpai</span><p>Veterano ou mentor. Alguém que tem mais experiência ou tempo de casa que você na empresa ou escola.</p></div>
+                <div class="grid-item"><h3>本音</h3><span class="romaji">honne</span><p>Seus verdadeiros sentimentos e desejos pessoais, mostrados apenas para amigos próximos (Uchi).</p></div>
+                <div class="grid-item"><h3>建前</h3><span class="romaji">tatemae</span><p>A fachada social. O comportamento polido e harmonioso esperado em público (Soto).</p></div>
+            </div>
+
+            <div class="section-header" style="margin-top: 3rem;">
+                <h2>Expressões Práticas (Aisatsu)</h2>
+                <p>Vocabulário do dia a dia e respostas exatas dos exercícios práticos da trilha.</p>
+            </div>
+            <div class="grid-container">
+                <div class="grid-item"><h3>おはようございます</h3><span class="romaji">ohayou gozaimasu</span><p>Bom dia (Formal e polido).</p></div>
+                <div class="grid-item"><h3>おはよう</h3><span class="romaji">ohayou</span><p>Bom dia (Casual, apenas para amigos próximos e família).</p></div>
+                <div class="grid-item"><h3>こんにちは</h3><span class="romaji">konnichiwa</span><p>Boa tarde / Olá.</p></div>
+                <div class="grid-item"><h3>こんばんは</h3><span class="romaji">konbanwa</span><p>Boa noite (Usado ao encontrar alguém à noite).</p></div>
+                <div class="grid-item"><h3>おやすみなさい</h3><span class="romaji">oyasuminasai</span><p>Boa noite (Usado apenas na hora de ir dormir / despedida noturna).</p></div>
+                <div class="grid-item"><h3>ありがとうございます</h3><span class="romaji">arigatou gozaimasu</span><p>Muito obrigado (Formal).</p></div>
+                <div class="grid-item"><h3>さようなら</h3><span class="romaji">sayounara</span><p>Adeus (Formal. Implica que você não verá a pessoa por um longo tempo).</p></div>
+                <div class="grid-item"><h3>じゃあね</h3><span class="romaji">jaa ne</span><p>Até logo / Tchau (Casual. Muito comum no dia a dia com amigos e colegas).</p></div>
+            </div>
+
+            <div class="section-header" style="margin-top: 3rem;">
+                <h2>Sistemas de Escrita (Kana)</h2>
+                <p>Tabelas de consulta rápida. O primeiro caractere é o <strong>Hiragana</strong>, o segundo é o <strong>Katakana</strong>.</p>
+            </div>
+            <div class="kana-grid">
+                <div class="kana-group">
+                    <h4>Vogais</h4>
+                    <div class="kana-row"><span>あ / ア</span> <span class="romaji">(a)</span></div>
+                    <div class="kana-row"><span>い / イ</span> <span class="romaji">(i)</span></div>
+                    <div class="kana-row"><span>う / ウ</span> <span class="romaji">(u)</span></div>
+                    <div class="kana-row"><span>え / エ</span> <span class="romaji">(e)</span></div>
+                    <div class="kana-row"><span>お / オ</span> <span class="romaji">(o)</span></div>
+                </div>
+                <div class="kana-group">
+                    <h4>Linha K</h4>
+                    <div class="kana-row"><span>か / カ</span> <span class="romaji">(ka)</span></div>
+                    <div class="kana-row"><span>き / キ</span> <span class="romaji">(ki)</span></div>
+                    <div class="kana-row"><span>く / ク</span> <span class="romaji">(ku)</span></div>
+                    <div class="kana-row"><span>け / ケ</span> <span class="romaji">(ke)</span></div>
+                    <div class="kana-row"><span>こ / コ</span> <span class="romaji">(ko)</span></div>
+                </div>
+                <div class="kana-group">
+                    <h4>Linha S</h4>
+                    <div class="kana-row"><span>さ / サ</span> <span class="romaji">(sa)</span></div>
+                    <div class="kana-row"><span>し / シ</span> <span class="romaji">(shi)</span></div>
+                    <div class="kana-row"><span>す / ス</span> <span class="romaji">(su)</span></div>
+                    <div class="kana-row"><span>せ / セ</span> <span class="romaji">(se)</span></div>
+                    <div class="kana-row"><span>そ / ソ</span> <span class="romaji">(so)</span></div>
+                </div>
+                <div class="kana-group">
+                    <h4>Linha T</h4>
+                    <div class="kana-row"><span>た / タ</span> <span class="romaji">(ta)</span></div>
+                    <div class="kana-row"><span>ち / チ</span> <span class="romaji">(chi)</span></div>
+                    <div class="kana-row"><span>つ / ツ</span> <span class="romaji">(tsu)</span></div>
+                    <div class="kana-row"><span>て / テ</span> <span class="romaji">(te)</span></div>
+                    <div class="kana-row"><span>と / ト</span> <span class="romaji">(to)</span></div>
+                </div>
+                <div class="kana-group">
+                    <h4>Linha N</h4>
+                    <div class="kana-row"><span>な / ナ</span> <span class="romaji">(na)</span></div>
+                    <div class="kana-row"><span>に / ニ</span> <span class="romaji">(ni)</span></div>
+                    <div class="kana-row"><span>ぬ / ヌ</span> <span class="romaji">(nu)</span></div>
+                    <div class="kana-row"><span>ね / ネ</span> <span class="romaji">(ne)</span></div>
+                    <div class="kana-row"><span>の / ノ</span> <span class="romaji">(no)</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="perfil" class="view">
+            <div class="section-header">
+                <h2>Seu Perfil</h2>
+                <p>Acompanhe seu progresso de estudos e gerencie sua conta.</p>
+            </div>
+            <div class="profile-header">
+                <div class="avatar">MG</div>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.8rem; color: var(--text-dark);">Maria Gabriella</h3>
+                    <p style="margin: 0.2rem 0 0 0; color: var(--text-light); font-size: 1.1rem;">Estudante • FATEC Baixada Santista</p>
+                </div>
+            </div>
+            
+            <div class="grid-container">
+                <div class="grid-item" style="text-align: center;">
+                    <h4 style="margin: 0; color: var(--text-light);">Nível Atual</h4>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">Iniciante (N5)</p>
+                </div>
+                <div class="grid-item" style="text-align: center;">
+                    <h4 style="margin: 0; color: var(--text-light);">Módulos Concluídos</h4>
+                    <p id="contador-modulos" style="margin: 0.5rem 0 0 0; font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">0 / 10</p>
+                </div>
+                <div class="grid-item" style="text-align: center;">
+                    <h4 style="margin: 0; color: var(--text-light);">Dias de Ofensiva</h4>
+                    <p id="dias-ofensiva" style="margin: 0.5rem 0 0 0; font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">🔥 1 Dia</p>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Configurações de Conta</h3>
+                <form onsubmit="salvarConfiguracoes(event)">
+                    <div class="form-group">
+                        <label>Foto de Perfil</label>
+                        <div class="file-upload-wrapper">
+                            <div class="avatar" style="width: 50px; height: 50px; font-size: 1.2rem;">MG</div>
+                            <input type="file" id="foto-upload" accept="image/png, image/jpeg">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="nome-usuario">Nome Completo</label>
+                        <input type="text" id="nome-usuario" class="form-control" value="Maria Gabriella">
+                    </div>
+                    <div class="form-group">
+                        <label for="email-usuario">Endereço de E-mail</label>
+                        <input type="email" id="email-usuario" class="form-control" value="maria.gabriella@aluno.fatec.sp.gov.br">
+                    </div>
+                    <div class="form-group">
+                        <label for="senha-usuario">Nova Senha</label>
+                        <input type="password" id="senha-usuario" class="form-control" placeholder="Deixe em branco para não alterar">
+                    </div>
+                    <button type="submit" class="btn" style="margin-top: 1rem; width: 100%;">Salvar Alterações</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Opções ajustadas para se adequarem às perguntas (2 ou 4 opções dinamicamente)
+        const bancoDeQuestoes = {
+            1: [
+                { cenario: "Você está chegando ao trabalho às 8h da manhã e encontra o seu chefe.", pergunta: "Como você deve cumprimentá-lo (em romaji) considerando a hierarquia?", opcoes: ["ohayou", "ohayou gozaimasu", "konnichiwa", "sayounara"], resposta: "ohayou gozaimasu", dica: "Cuidado com o 'ohayou' simples. Use a forma polida com o seu chefe." },
+                { cenario: "A linguagem corporal é tão importante quanto as palavras.", pergunta: "Como se chama o ato tradicional japonês de curvar-se para demonstrar respeito?", opcoes: ["karate", "sushi", "ojigi", "origami"], resposta: "ojigi", dica: "Consulte o Glossário Cultural se não lembrar." },
+                { cenario: "Você encontra um amigo muito próximo da escola pela manhã.", pergunta: "Como você o cumprimenta de forma casual?", opcoes: ["konbanwa", "ohayou gozaimasu", "arigatou", "ohayou"], resposta: "ohayou", dica: "Com amigos, não precisamos do 'gozaimasu'." },
+                { cenario: "Conceito Cultural Importante.", pergunta: "Qual é o nome dado à linguagem honorífica japonesa usada com superiores?", opcoes: ["hiragana", "keigo", "kanji", "manga"], resposta: "keigo", dica: "Termina com 'go' (língua). Está no glossário!" },
+                { cenario: "É 14h00 e você entra em uma loja de conveniência.", pergunta: "Qual é a saudação padrão para 'boa tarde'?", opcoes: ["konnichiwa", "oyasuminasai", "jaa ne", "ohayou"], resposta: "konnichiwa", dica: "É a saudação mais famosa do Japão, usada durante o dia." }
+            ],
+            2: [
+                { cenario: "O sol acabou de se pôr e você encontra um vizinho.", pergunta: "Como dizer 'boa noite'?", opcoes: ["konnichiwa", "ohayou", "konbanwa", "sayounara"], resposta: "konbanwa", dica: "Termina com 'wa'." },
+                { cenario: "Você está indo dormir e se despede da sua família.", pergunta: "O que você diz antes de deitar?", opcoes: ["oyasuminasai", "jaa ne", "arigatou", "ohayou gozaimasu"], resposta: "oyasuminasai", dica: "Forma completa e educada de boa noite ao dormir." },
+                { cenario: "Alguém segurou a porta do elevador para você.", pergunta: "Como dizer 'muito obrigado' de forma polida?", opcoes: ["arigatou", "sumimasen", "hai", "arigatou gozaimasu"], resposta: "arigatou gozaimasu", dica: "Adicione a parte formal ao arigatou." },
+                { cenario: "Você está saindo da casa de um amigo.", pergunta: "Como dizer 'até logo' casualmente?", opcoes: ["sayounara", "jaa ne", "oyasuminasai", "konnichiwa"], resposta: "jaa ne", dica: "Duas palavras curtas, muito comuns." },
+                { cenario: "Você está se despedindo de alguém que não verá por um bom tempo.", pergunta: "Qual é o 'adeus' formal?", opcoes: ["jaa ne", "ohayou", "sayounara", "arigatou"], resposta: "sayounara", dica: "Não use isso diariamente no trabalho!" }
+            ],
+            3: [
+                { cenario: "Na sociedade japonesa, a forma como você fala depende se a pessoa é do seu grupo ou de fora.", pergunta: "Como se chama o seu grupo interno (ex: família, sua empresa)?", opcoes: ["soto", "uchi", "ie", "gakkou"], resposta: "uchi", dica: "Significa 'dentro'." },
+                { cenario: "Você está falando com um cliente da sua empresa.", pergunta: "O cliente pertence ao Uchi ou ao Soto?", opcoes: ["Uchi", "Soto"], resposta: "soto", dica: "Significa 'fora'." }, // Dinamicamente exibirá apenas 2 opções
+                { cenario: "Dentro de uma empresa (Uchi), você precisa demonstrar respeito por quem tem mais tempo de casa.", pergunta: "Como você chama um veterano ou mentor?", opcoes: ["kohai", "sensei", "senpai", "shachou"], resposta: "senpai", dica: "Termo muito comum em escolas e empresas." },
+                { cenario: "Você está expressando sua opinião verdadeira, mas apenas para amigos íntimos.", pergunta: "Como se chamam os verdadeiros sentimentos (Honne ou Tatemae)?", opcoes: ["Honne", "Tatemae"], resposta: "honne", dica: "É o oposto da fachada social." }, // Exibirá apenas 2 opções
+                { cenario: "Você está em um jantar de negócios e mantém uma postura polida e harmoniosa, mesmo discordando da opinião.", pergunta: "Você está usando a sua fachada social. Como ela se chama?", opcoes: ["honne", "tatemae", "kao", "kuchi"], resposta: "tatemae", dica: "É o comportamento esperado em público para manter a harmonia." }
+            ]
+        };
+
+        let moduloAtual = 1;
+        let perguntaAtualIndex = 0;
+        let modulosCompletados = 0;
+        let progressoSalvo = {}; 
+        let diasOfensiva = 1; // Variável controlando a ofensiva de dias estudados seguidos
+
+        function atualizarBotoesTrilha() {
+            for(let i = 1; i <= Object.keys(bancoDeQuestoes).length; i++) {
+                let btn = document.getElementById(`btn-${i}`);
+                if(btn && progressoSalvo[i] > 0 && progressoSalvo[i] < bancoDeQuestoes[i].length) {
+                    btn.innerText = 'Continuar';
+                    btn.classList.add('btn-continue');
+                }
+            }
+        }
+
+        function navigateHome() { 
+            atualizarBotoesTrilha();
+            navigate('trilha', document.getElementById('nav-trilha')); 
+        }
+
+        function navigate(viewId, btnElement) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            if(btnElement) btnElement.classList.add('active');
+            
+            if(viewId === 'trilha') atualizarBotoesTrilha();
+        }
+
+        function iniciarExercicio(moduloId) {
+            moduloAtual = moduloId;
+            
+            if(progressoSalvo[moduloId] === undefined) {
+                progressoSalvo[moduloId] = 0;
+            }
+            perguntaAtualIndex = progressoSalvo[moduloId];
+
+            if (perguntaAtualIndex >= bancoDeQuestoes[moduloId].length) {
+                perguntaAtualIndex = 0;
+                progressoSalvo[moduloId] = 0;
+            }
+
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById('exercicio').classList.add('active');
+            carregarPergunta();
+        }
+
+        function carregarPergunta() {
+            const questoes = bancoDeQuestoes[moduloAtual];
+            const questaoData = questoes[perguntaAtualIndex];
+            
+            document.getElementById('quiz-titulo').innerText = `Módulo ${moduloAtual} - Pergunta ${perguntaAtualIndex + 1} de ${questoes.length}`;
+            document.getElementById('quiz-cenario').innerText = "Cenário: " + questaoData.cenario;
+            document.getElementById('quiz-pergunta').innerText = questaoData.pergunta;
+            
+            const progresso = ((perguntaAtualIndex) / questoes.length) * 100;
+            document.getElementById('quiz-progress').style.width = progresso + '%';
+            
+            document.getElementById('feedback').innerText = '';
+            document.getElementById('feedback').className = '';
+
+            const opcoesContainer = document.getElementById('opcoes-container');
+            opcoesContainer.innerHTML = ''; 
+
+            questaoData.opcoes.forEach(opcaoText => {
+                const cardOpcao = document.createElement('div');
+                cardOpcao.className = 'option-card';
+                cardOpcao.innerText = opcaoText;
+                
+                cardOpcao.onclick = () => validarOpcaoSelecionada(cardOpcao, opcaoText, questaoData);
+                
+                opcoesContainer.appendChild(cardOpcao);
+            });
+        }
+
+        function validarOpcaoSelecionada(cardElement, opcaoSelecionada, questaoAtual) {
+            if (document.querySelector('.option-card.correct')) return;
+
+            const feedbackEl = document.getElementById('feedback');
+
+            // Ignora caixa alta/baixa para facilitar a comparação interna do script
+            if (opcaoSelecionada.toLowerCase() === questaoAtual.resposta.toLowerCase()) {
+                cardElement.classList.add('correct');
+                feedbackEl.innerText = "Correto! Muito bem.";
+                feedbackEl.className = "success";
+                
+                const progresso = ((perguntaAtualIndex + 1) / bancoDeQuestoes[moduloAtual].length) * 100;
+                document.getElementById('quiz-progress').style.width = progresso + '%';
+
+                setTimeout(() => { avancarPergunta(); }, 1200);
+            } else {
+                cardElement.classList.add('incorrect');
+                feedbackEl.innerText = `Incorreto. Dica: ${questaoAtual.dica}`;
+                feedbackEl.className = "error";
+            }
+        }
+
+        function avancarPergunta() {
+            const totalQuestoes = bancoDeQuestoes[moduloAtual].length;
+            perguntaAtualIndex++;
+            
+            progressoSalvo[moduloAtual] = perguntaAtualIndex;
+
+            if (perguntaAtualIndex < totalQuestoes) {
+                carregarPergunta();
+            } else {
+                finalizarModulo();
+            }
+        }
+
+        function finalizarModulo() {
+            alert(`Parabéns! Você completou todas as lições do Módulo ${moduloAtual}.`);
+            
+            const cardAtual = document.getElementById(`card-${moduloAtual}`);
+            const btnAtual = document.getElementById(`btn-${moduloAtual}`);
+            
+            if(cardAtual) cardAtual.classList.add('completed');
+            if(btnAtual) {
+                btnAtual.innerText = 'Revisar';
+                btnAtual.classList.remove('btn-continue');
+            }
+
+            if (modulosCompletados < moduloAtual) {
+                modulosCompletados++;
+                document.getElementById('contador-modulos').innerText = `${modulosCompletados} / 10`;
+                
+                // Incrementa a ofensiva dinâmica simulando o avanço nos dias de estudo
+                diasOfensiva++;
+                document.getElementById('dias-ofensiva').innerText = `🔥 ${diasOfensiva} Dias`;
+            }
+
+            const proximoModulo = moduloAtual + 1;
+            const proximoCard = document.getElementById(`card-${proximoModulo}`);
+            const proximoBtn = document.getElementById(`btn-${proximoModulo}`);
+            const proximoNode = document.getElementById(`node-${proximoModulo}`);
+            const linhaAnterior = document.getElementById(`line-${moduloAtual}`);
+            
+            if (proximoCard) {
+                proximoCard.classList.remove('locked');
+                proximoBtn.removeAttribute('disabled');
+                proximoBtn.innerText = 'Iniciar';
+                if(proximoNode) proximoNode.classList.remove('locked');
+                if(linhaAnterior) linhaAnterior.classList.remove('locked');
+            }
+
+            navigateHome();
+        }
+
+        function salvarConfiguracoes(event) {
+            event.preventDefault();
+            alert("Configurações atualizadas com sucesso no banco de dados simulado!");
+        }
+    </script>
+</body>
+</html>
